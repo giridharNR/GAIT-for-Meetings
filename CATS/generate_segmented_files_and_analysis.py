@@ -12,10 +12,10 @@ import string
 import re
 import string
 
-root_dir = "/home1/myloth/CSCI544_FinalProj/ELITR-CATS-Data/segmented_meeting_transcripts/"
-METRIC_OUTPUT_LOCATION =  "/home1/myloth/CSCI544_FinalProj/metrics/metrics.csv"
-SEGEMENTED_RES_OUPUT_DIR = "/home1/myloth/CSCI544_FinalProj/segement_res"
-GRAPH_DIR = "/home1/myloth/CSCI544_FinalProj/graphs"
+root_dir = "./output_dir/"
+METRIC_OUTPUT_LOCATION =  "./metrics/metrics.csv"
+SEGEMENTED_RES_OUPUT_DIR = "./segement_res"
+GRAPH_DIR = "./graphs"
 
 def get_probabilities_and_text(meeting_file):
     
