@@ -1,1 +1,1 @@
-# GAIT-for-Meetings---Group-13---CSCI544
+# GAIT: Generating Action Items using Transformers
