@@ -1,4 +1,4 @@
-This repository contains code for the CATS (Coherence Aware Text Segmentation) tool, which performs text segmentation. For details about the model, please refer to the AAAI 2020 paper [Two-Level Transformer and Auxiliary Coherence Modeling for Improved Text Segmentation](https://arxiv.org/abs/2001.00891).
+This folder contains code for the CATS (Coherence Aware Text Segmentation) tool, which performs text segmentation. For details about the model, please refer to the AAAI 2020 paper [Two-Level Transformer and Auxiliary Coherence Modeling for Improved Text Segmentation](https://arxiv.org/abs/2001.00891).
 
 
 ## Setup
