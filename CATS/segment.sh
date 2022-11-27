@@ -1,24 +1,10 @@
 #!/bin/bash
 
-usage() { echo "Usage: $0 [-s 0|1] [-p 0|1] input_dir output_dir";}
+usage() { echo "Usage: $0 input_dir output_dir";}
 
 SSPLIT=0
-SCORES=0
+SCORES=1
 
-while getopts ":s:p:" o; do
-    case "${o}" in
-        s)
-            SSPLIT=${OPTARG}
-            ;;
-        p)
-            SCORES=${OPTARG}
-            ;;
-        *)
-            usage
-            exit  
-            ;;    
-    esac
-done
 shift $((OPTIND-1))
 
 IN_DIR=$1
