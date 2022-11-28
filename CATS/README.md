@@ -9,7 +9,7 @@ Create a conda environment using the `environment.yml` file.
 * `conda activate cats`
 
 Download data folder:
-* Download the data folder from `data_drive_link`
+* Download the `data\` folder from [Google Drive Link](https://drive.google.com/drive/folders/1bQnvBDita-LwKqqmvbtsIMD40DceOUxP?usp=sharing)
 * Add the `data\` folder inside the `CATS\` folder
 
 ## Make Predictions
