@@ -34,15 +34,8 @@ from joblib import dump, load
 
 from transformers import pipeline
 
-def loadModel(modelName):
-    if modelName == 'ann':
-        return torch.load('bow_ann.pt')
-    elif modelName == 'rf':
-        return load('random_forest.joblib')
-    elif modelName == 'tr':
-        return torch.load('transformer.pt')
-
-model = loadModel(method)
+use_cuda = torch.cuda.is_available()
+device = torch.device("cuda" if use_cuda else "cpu")
 
 def strip_html_tags(text):
     soup = BeautifulSoup(text, "html.parser")
@@ -70,12 +63,12 @@ def remove_whitespace(text):
     Without_whitespace = re.sub(pattern, ' ', text)
     return Without_whitespace
 
-tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
+bertTokenizer = BertTokenizer.from_pretrained('bert-base-cased')
 
 class Dataset(torch.utils.data.Dataset):
 
     def __init__(self, df):
-        self.texts = [tokenizer(text, 
+        self.texts = [bertTokenizer(text, 
                                padding='max_length', max_length = 512, truncation=True,
                                 return_tensors="pt") for text in df['sentences_processed']]
 
@@ -112,8 +105,69 @@ class BertClassifier(nn.Module):
 
         return final_layer
 
-use_cuda = torch.cuda.is_available()
-device = torch.device("cuda" if use_cuda else "cpu")
+# ANN_BOW
+from torchtext.data.utils import get_tokenizer
+from torchtext.vocab import build_vocab_from_iterator
+
+tokenizer = get_tokenizer('basic_english')
+
+def yield_tokens(data_iter):
+    for _, text in data_iter:
+        yield tokenizer(text)
+
+def constructVocab(data_iter):
+    return build_vocab_from_iterator(yield_tokens(data_iter), specials=["<unk>"])
+
+label_pipeline = lambda x: int(x) 
+def collate_batch(batch):
+    label_list, text_list, offsets = [], [], [0]
+    for (_label, _text) in batch:
+         label_list.append(label_pipeline(_label))
+         processed_text = torch.tensor(text_pipeline(_text), dtype=torch.int64)
+         text_list.append(processed_text)
+         offsets.append(processed_text.size(0))
+    label_list = torch.tensor(label_list, dtype=torch.int64)
+    offsets = torch.tensor(offsets[:-1]).cumsum(dim=0)
+    text_list = torch.cat(text_list)
+    return label_list.to(device), text_list.to(device), offsets.to(device)
+
+import torch.nn.functional as F
+class TextClassificationModel(nn.Module):
+
+    def __init__(self, vocab_size, embed_dim, num_class):
+        super(TextClassificationModel, self).__init__()
+        self.embedding = nn.EmbeddingBag(vocab_size, embed_dim, sparse=True)
+        self.fc1 = nn.Linear(embed_dim,64)
+        self.fc2 = nn.Linear(64,16)
+        self.fc3 = nn.Linear(16, num_class)
+        self.init_weights()
+
+    def init_weights(self):
+        initrange = 0.5
+        self.embedding.weight.data.uniform_(-initrange, initrange)
+        self.fc1.weight.data.uniform_(-initrange, initrange)
+        self.fc1.bias.data.zero_()
+        self.fc2.weight.data.uniform_(-initrange, initrange)
+        self.fc2.bias.data.zero_()
+        self.fc3.weight.data.uniform_(-initrange, initrange)
+        self.fc3.bias.data.zero_()
+
+    def forward(self, text, offsets):
+        embedded = self.embedding(text, offsets)
+        x = F.relu(self.fc1(embedded))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+def loadModel(modelName):
+    if modelName == 'ann':
+        return torch.load('models/bow_ann.pt')
+    elif modelName == 'rf':
+        return load('models/random_forest.joblib')
+    elif modelName == 'tr':
+        return torch.load('models/transformer.pt')
+
+model = loadModel(method)
 
 if use_cuda and method != 'rf':
     model = model.cuda()
@@ -129,6 +183,7 @@ for paragraph in paragraphs:
     df = pd.DataFrame()
     for idx, sentence in enumerate(sentences):
         df.at[idx,'sentences'] = sentence
+        df.at[idx,'dummy_label'] = 0
 
     df['sentences_processed'] = df['sentences'].apply(lambda sentence: strip_html_tags(sentence))
     df['sentences_processed'] = df['sentences_processed'].apply(lambda sentence: remove_links(sentence))
@@ -150,8 +205,16 @@ for paragraph in paragraphs:
 
                 df.at[idx.item(),'classified_label'] = output.argmax(dim=1)[0].item()
     elif method == 'ann':
-        print()
-        #ann
+        data_iter = list(zip(df['dummy_label'], df['sentences_processed']))
+        vocab = constructVocab(data_iter)
+        vocab.set_default_index(vocab["<unk>"])
+        text_pipeline = lambda x: vocab(tokenizer(x))
+
+        dataloader = DataLoader(data_iter, batch_size=1, shuffle=True, collate_fn=collate_batch)
+        with torch.no_grad():
+            for idx, (label, text, offsets) in enumerate(dataloader):
+                predited_label = model(text, offsets)
+                df.at[idx, 'classified_label'] = predited_label.argmax(1)[0].item()
     elif method == 'rf':
         X = df['sentences_processed']
         pred = model.predict(X)
@@ -160,9 +223,10 @@ for paragraph in paragraphs:
     df_action = df[df['classified_label'] == 1].reset_index(drop=True)
 
     actions = ""
-    for sentence in df_action['sentences']:
-        actions = actions + sentence.strip().capitalize() + '. '
 
-    out.write(actions + '\n')
+    for idx, sentence in enumerate(df_action['sentences']):
+        actions = actions + sentence + ". "
+    
+    out.write(actions.strip() + "\n")
 
 out.close()
