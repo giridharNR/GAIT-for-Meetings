@@ -21,4 +21,5 @@ OPTIONS:
 * Random Forest: `-rf`
 * BERT: `-tr`
 
+The BERT model is too big to put into Github. Download it from this link and put it into models folder: https://drive.google.com/file/d/1ao9ntbEoJ3uIlQNFg-4RmmQpLaRKPu5P/view?usp=share_link
 
